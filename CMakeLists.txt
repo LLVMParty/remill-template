@@ -25,11 +25,14 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif()
 
 # Variables
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(GFLAGS_USE_TARGET_NAMESPACE ON)
 
 project(remill-template)
 
 # Packages
+find_package(LLVM-Wrapper REQUIRED)
+
 find_package(remill REQUIRED)
 
 # Target: remill-example

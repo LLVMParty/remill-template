@@ -3,8 +3,10 @@
 name = "remill-template"
 
 [variables]
+CMAKE_MODULE_PATH = "${CMAKE_SOURCE_DIR}/cmake"
 GFLAGS_USE_TARGET_NAMESPACE = true
 
+[find-package.LLVM-Wrapper]
 [find-package.remill]
 
 [target.remill-example]
