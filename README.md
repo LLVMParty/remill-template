@@ -1,6 +1,11 @@
 # remill-template
 
-Simple template for using Remill.
+Simple template for using Remill. To understand remill, take a look at the following documentation pages:
+
+- [Step-by-step guide on how Remill lifts an instruction](https://github.com/lifting-bits/remill/blob/master/docs/LIFE_OF_AN_INSTRUCTION.md)
+- [The design and architecture of Remill](https://github.com/lifting-bits/remill/blob/master/docs/DESIGN.md)
+
+The [`example.cpp`](src/example.cpp) lifts `mov rcx, 1337` and prints the lifted basic block function.
 
 ## Setting up the environment
 
@@ -65,7 +70,7 @@ Additionally it's recommended to configure Docker to use the WSL 2 backend.
 
 ### 3) Local build
 
-First build the dependencies (this includes LLVM):
+First build the dependencies, this includes LLVM per default. To use your own LLVM, pass `-DUSE_EXTERNAL_LLVM=ON`:
 
 ```bash
 cmake -G Ninja -B dependencies/build -S dependencies -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
