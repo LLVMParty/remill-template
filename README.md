@@ -68,7 +68,7 @@ Additionally it's recommended to configure Docker to use the WSL 2 backend.
 First build the dependencies (this includes LLVM):
 
 ```bash
-cmake -B dependencies/build -S dependencies -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake -G Ninja -B dependencies/build -S dependencies -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build dependencies/build
 ```
 
@@ -79,8 +79,10 @@ You should then have a `dependencies/install` folder.
 Then build the main project:
 
 ```bash
-cmake -B build "-DCMAKE_PREFIX_PATH=dependencies/install"
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
 ```
 
 For more information, see [`LLVMParty/packages/dependencies.md`](https://github.com/LLVMParty/packages/blob/main/dependencies.md).
+
+If you do not want to build LLVM on Windows you can download [`llvm-19.1.6-install.7z`](https://github.com/LLVMParty/remill-template/releases/download/llvm-prebuild/llvm-19.1.6-install.7z). See [`build.yml`](.github/workflows/build.yml) for an example in GitHub Actions.
