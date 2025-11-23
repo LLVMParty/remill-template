@@ -13,6 +13,7 @@
 #include <remill/OS/OS.h>
 #include <remill/Version/Version.h>
 
+#include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
@@ -33,8 +34,14 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  // mov rcx, 0x1337
-  uint8_t instr_bytes[] = {0x48, 0xc7, 0xc1, 0x37, 0x13, 0x00, 0x00};
+  auto intrinsics = arch->GetInstrinsicTable();
+  if (!intrinsics) {
+    llvm::outs() << "Failed to get intrinsic table\n";
+    return EXIT_FAILURE;
+  }
+
+  // mov rcx, 1337
+  uint8_t instr_bytes[] = {0x48, 0xc7, 0xc1, 0x39, 0x05, 0x00, 0x00};
   std::string_view instr_view(reinterpret_cast<char *>(instr_bytes),
                               sizeof(instr_bytes));
   remill::Instruction instruction;
@@ -46,13 +53,40 @@ int main(int argc, char **argv) {
   }
 
   auto function = arch->DefineLiftedFunction("lifted_example", semantics.get());
+  auto block = &function->getEntryBlock();
   auto lifter = instruction.GetLifter();
-  auto status = lifter->LiftIntoBlock(instruction, &function->getEntryBlock());
+  auto status = lifter->LiftIntoBlock(instruction, block);
   if (status != remill::kLiftedInstruction) {
     llvm::outs() << "Failed to lift instruction\n";
     return EXIT_FAILURE;
   }
 
+  // Finish the lifted block by returning the memory pointer.
+  llvm::IRBuilder<> ir(block);
+  ir.CreateRet(remill::LoadMemoryPointer(block, *intrinsics));
+
+  // Print called functions
+  llvm::outs() << "[unoptimized]\n";
+  auto printed = std::set<llvm::Function *>{};
+  for (auto &basic_block : *function) {
+    for (auto &instruction : basic_block) {
+      if (auto caller = llvm::dyn_cast<llvm::CallBase>(&instruction)) {
+        auto callee = caller->getCalledFunction();
+        if (!printed.count(callee)) {
+          auto name = callee->getName().str();
+          llvm::outs() << "; Mangled name: " << name << "\n";
+          callee->setName(llvm::demangle(name));
+          llvm::outs() << *callee << "\n";
+          printed.insert(callee);
+        }
+      }
+    }
+  }
+  function->print(llvm::outs());
+
+  remill::OptimizeModule(arch.get(), semantics.get(), {function});
+
+  llvm::outs() << "\n[optimized]\n";
   function->print(llvm::outs());
 
   return EXIT_SUCCESS;
