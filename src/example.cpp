@@ -45,15 +45,9 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  auto function = llvm::Function::Create(arch->LiftedFunctionType(),
-                                         llvm::Function::ExternalLinkage,
-                                         "lifted_example", semantics.get());
-
-  llvm::BasicBlock *block =
-      llvm::BasicBlock::Create(context, "entry", function);
-
+  auto function = arch->DefineLiftedFunction("lifted_example", semantics.get());
   auto lifter = instruction.GetLifter();
-  auto status = lifter->LiftIntoBlock(instruction, block);
+  auto status = lifter->LiftIntoBlock(instruction, &function->getEntryBlock());
   if (status != remill::kLiftedInstruction) {
     llvm::outs() << "Failed to lift instruction\n";
     return EXIT_FAILURE;
