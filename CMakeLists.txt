@@ -46,11 +46,16 @@ add_executable(remill-example)
 target_sources(remill-example PRIVATE ${remill-example_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${remill-example_SOURCES})
 
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"remill-example\" does not exist!")
+endif()
+
 if(NOT TARGET remill)
 	message(FATAL_ERROR "Target \"remill\" referenced by \"remill-example\" does not exist!")
 endif()
 
 target_link_libraries(remill-example PRIVATE
+	LLVM-Wrapper
 	remill
 )
 

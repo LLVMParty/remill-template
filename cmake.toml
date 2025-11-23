@@ -12,4 +12,4 @@ GFLAGS_USE_TARGET_NAMESPACE = true
 [target.remill-example]
 type = "executable"
 sources = ["src/example.cpp"]
-link-libraries = ["::remill"]
+link-libraries = ["::LLVM-Wrapper", "::remill"]
