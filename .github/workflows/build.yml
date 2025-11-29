@@ -48,12 +48,12 @@ jobs:
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
             cmake --build build
 
         - name: Run example
@@ -78,12 +78,12 @@ jobs:
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
             cmake --build build
 
         - name: Run example
@@ -112,13 +112,13 @@ jobs:
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$env:LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$env:LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
           shell: pwsh
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$env:LLVM_PREFIX;$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
             cmake --build build
           shell: pwsh
 

@@ -77,14 +77,14 @@ cmake -G Ninja -B dependencies/build -S dependencies -G Ninja -DCMAKE_C_COMPILER
 cmake --build dependencies/build
 ```
 
-_Note_: On Windows this requires a development command prompt and MSVC is _not_ supported.
+_Note_: On Windows this requires a development command prompt and MSVC is _not_ supported, you _need_ to use `-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl`.
 
 You should then have a `dependencies/install` folder.
 
 Then build the main project:
 
 ```bash
-cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
 ```
 
