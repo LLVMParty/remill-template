@@ -3,7 +3,9 @@
 // Based on: https://github.com/Coollab-Art/exe_path (BSL-1.0)
 
 #if defined(_WIN32)
-#include <ShlObj.h>
+// Prevent Windows.h from pulling in a ton of crap that defines macros
+// like 'small', 'near', 'far', etc. that conflict with normal code.
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 static auto executable_path_impl() -> std::filesystem::path {
