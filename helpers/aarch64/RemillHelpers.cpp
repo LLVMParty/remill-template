@@ -1,0 +1,125 @@
+/*
+  Original author: https://github.com/fvrmatteo
+  Reference: https://secret.club/2021/09/08/vmprotect-llvm-lifting-1.html
+  Remill helpers for tests:
+  https://github.com/lifting-bits/remill/blob/1fb647502b443cbd190e211b18f78979b857fd50/tests/AArch64/Run.cpp#L118-L663
+*/
+
+#include <remill/Arch/AArch64/Runtime/State.h>
+
+// NOTE: We disable tail calls because it can cause the DSEPass to make false assumptions
+#define HELPER extern "C" __attribute__((always_inline)) __attribute__((disable_tail_calls))
+
+// Memory layout (0 length arrays treated as a simple pointer to unknown memory)
+
+extern "C" uint8_t RAM[0];
+
+// Implementation of the Remill memory access (read/write) intrinsics
+
+HELPER uint8_t __remill_read_memory_8(Memory *m, addr_t a) {
+  uint8_t v = 0;
+  __builtin_memcpy(&v, &RAM[a], sizeof(v));
+  return v;
+}
+
+HELPER uint16_t __remill_read_memory_16(Memory *m, addr_t a) {
+  uint16_t v = 0;
+  __builtin_memcpy(&v, &RAM[a], sizeof(v));
+  return v;
+}
+
+HELPER uint32_t __remill_read_memory_32(Memory *m, addr_t a) {
+  uint32_t v = 0;
+  __builtin_memcpy(&v, &RAM[a], sizeof(v));
+  return v;
+}
+
+HELPER uint64_t __remill_read_memory_64(Memory *m, addr_t a) {
+  uint64_t v = 0;
+  __builtin_memcpy(&v, &RAM[a], sizeof(v));
+  return v;
+}
+
+HELPER Memory *__remill_write_memory_8(Memory *m, addr_t a, uint8_t v) {
+  __builtin_memcpy(&RAM[a], &v, sizeof(v));
+  return m;
+}
+
+HELPER Memory *__remill_write_memory_16(Memory *m, addr_t a, uint16_t v) {
+  __builtin_memcpy(&RAM[a], &v, sizeof(v));
+  return m;
+}
+
+HELPER Memory *__remill_write_memory_32(Memory *m, addr_t a, uint32_t v) {
+  __builtin_memcpy(&RAM[a], &v, sizeof(v));
+  return m;
+}
+
+HELPER Memory *__remill_write_memory_64(Memory *m, addr_t a, uint64_t v) {
+  __builtin_memcpy(&RAM[a], &v, sizeof(v));
+  return m;
+}
+
+// Implementation of the Remill flag and comparison computation intrinsics
+
+HELPER bool __remill_flag_computation_zero(bool result, ...) {
+  return result;
+}
+
+HELPER bool __remill_flag_computation_sign(bool result, ...) {
+  return result;
+}
+
+HELPER bool __remill_flag_computation_overflow(bool result, ...) {
+  return result;
+}
+
+HELPER bool __remill_flag_computation_carry(bool result, ...) {
+  return result;
+}
+
+HELPER bool __remill_compare_sle(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_slt(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_sge(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_sgt(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_ule(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_ult(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_ugt(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_uge(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_eq(bool result) {
+  return result;
+}
+
+HELPER bool __remill_compare_neq(bool result) {
+  return result;
+}
+
+// Implementation of the remill hint calls
+
+HELPER Memory *__remill_function_return(State *, addr_t, Memory *memory) {
+  return memory;
+}

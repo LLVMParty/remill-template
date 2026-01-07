@@ -6,6 +6,8 @@ name = "remill-template"
 CMAKE_MODULE_PATH = "${CMAKE_SOURCE_DIR}/cmake"
 GFLAGS_USE_TARGET_NAMESPACE = true
 
+[subdir.helpers]
+
 [find-package.LLVM-Wrapper]
 [find-package.remill]
 
