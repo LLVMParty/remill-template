@@ -56,7 +56,14 @@ simple_git(https://github.com/google/googletest v1.17.0
     "-DGFLAGS_USE_TARGET_NAMESPACE:STRING=ON"
 )
 
+# Reuse remill's XED recipe and XEDConfig.cmake.in verbatim. Current remill
+# uses CMAKE_CURRENT_SOURCE_DIR for its template lookup; keep this compatibility
+# shim until the CMAKE_CURRENT_LIST_DIR fix is available upstream.
+set(_dependencies_current_source_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+set(CMAKE_CURRENT_SOURCE_DIR "${remill_dependencies_dir}")
 include("${remill_dependencies_dir}/xed.cmake")
+set(CMAKE_CURRENT_SOURCE_DIR "${_dependencies_current_source_dir}")
+unset(_dependencies_current_source_dir)
 
 set(LLVM_CONFIG "${CMAKE_INSTALL_PREFIX}/lib/cmake/llvm/LLVMConfig.cmake")
 if(USE_EXTERNAL_LLVM)

@@ -1,5 +1,10 @@
 name: Build
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    # Keep dependency caches warm; GitHub evicts caches that are not accessed.
+    - cron: 0 0 */5 * *
 
 # Automatically cancel previous runs of this workflow on the same branch
 concurrency:
@@ -9,35 +14,30 @@ concurrency:
 jobs:
   linux:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-22.04
-    # We use a clean container to avoid LLVM conflicts on the GH runner images
-    container:
-      image: ubuntu:22.04
     steps:
-        - name: Install build tools
-          run: |
-            apt update
-            apt install --no-install-recommends -y \
-              ca-certificates \
-              cmake \
-              ninja-build \
-              python-is-python3 \
-              python3-pip \
-              python3-setuptools \
-              python3-venv \
-              git \
-              build-essential
-
         - name: Checkout
           uses: actions/checkout@v5
           with:
             submodules: recursive
 
-        - name: Add workspace as safe directory (necessary for docker)
-          run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
 
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
             cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
@@ -55,19 +55,30 @@ jobs:
 
   macos:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: macos-latest
     steps:
-        - name: Install build tools
-          run: |
-            brew install ninja
-
         - name: Checkout
-          uses: actions/checkout@v5
+          uses: actions/checkout@v6
           with:
             submodules: recursive
 
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
+
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
             cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
@@ -85,18 +96,36 @@ jobs:
 
   windows:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: windows-latest
     steps:
-        - name: Visual Studio Developer Command Prompt
-          uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        - name: Setup MSVC
+          if: runner.os == 'Windows'
+          uses: TheMrMilchmann/setup-msvc-dev@79dac248aac9d0059f86eae9d8b5bfab4e95e97c # v4.0.0
+          with:
+            arch: x64
 
         - name: Checkout
-          uses: actions/checkout@v5
+          uses: actions/checkout@v6
           with:
             submodules: recursive
 
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
+
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
             cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build

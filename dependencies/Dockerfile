@@ -5,7 +5,6 @@ WORKDIR /tmp
 COPY \
     CMakeLists.txt  \
     superbuild.cmake \
-    XEDConfig.cmake.in \
     ./
 COPY remill/dependencies ./remill/dependencies
 
