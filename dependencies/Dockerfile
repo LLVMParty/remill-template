@@ -1,13 +1,12 @@
-ARG LLVM_VERSION=22.04-llvm19.1.7
+ARG LLVM_VERSION=22.04-llvm21.1.1
 
 FROM ghcr.io/llvmparty/packages/ubuntu:${LLVM_VERSION} AS build
 WORKDIR /tmp
 COPY \
     CMakeLists.txt  \
     superbuild.cmake \
-    xed.cmake \
-    XEDConfig.cmake.in \
     ./
+COPY remill/dependencies ./remill/dependencies
 
 # Build dependencies
 RUN \

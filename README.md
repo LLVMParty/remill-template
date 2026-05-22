@@ -70,10 +70,11 @@ Additionally it's recommended to configure Docker to use the WSL 2 backend.
 
 ### 3) Local build
 
-First build the dependencies, this includes LLVM per default. To use your own LLVM, pass `-DUSE_EXTERNAL_LLVM=ON`:
+Initialize submodules, then build the dependency prefix. This builds remill's third-party dependencies (gflags, glog, XED, and sleigh) and downloads the LLVMParty LLVM 21.1.6 prebuilt by default. To use your own LLVM, pass `-DUSE_EXTERNAL_LLVM=ON`; to compile LLVM from source, pass `-DDOWNLOAD_PREBUILT_LLVM=OFF`:
 
 ```bash
-cmake -G Ninja -B dependencies/build -S dependencies -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
+git submodule update --init --recursive
+cmake -G Ninja -B dependencies/build -S dependencies -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build dependencies/build
 ```
 
@@ -81,13 +82,13 @@ _Note_: On Windows this requires a development command prompt and MSVC is _not_ 
 
 You should then have a `dependencies/install` folder.
 
-Then build the main project:
+Then build the main project. Remill is compiled as part of this build from the `dependencies/remill` submodule. The default `dependencies/install` prefix is detected automatically:
 
 ```bash
-cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
 ```
 
 For more information, see [`LLVMParty/packages/dependencies.md`](https://github.com/LLVMParty/packages/blob/main/dependencies.md).
 
-If you do not want to build LLVM on Windows you can download [`llvm-19.1.6-install.7z`](https://github.com/LLVMParty/remill-template/releases/download/llvm-prebuild/llvm-19.1.6-install.7z). See [`build.yml`](.github/workflows/build.yml) for an example in GitHub Actions.
+For more information about the dependency superbuild, see [`dependencies/README.md`](dependencies/README.md).

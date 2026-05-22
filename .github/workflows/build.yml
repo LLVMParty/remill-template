@@ -1,5 +1,10 @@
 name: Build
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    # Keep dependency caches warm; GitHub evicts caches that are not accessed.
+    - cron: 0 0 */5 * *
 
 # Automatically cancel previous runs of this workflow on the same branch
 concurrency:
@@ -9,51 +14,39 @@ concurrency:
 jobs:
   linux:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-22.04
-    # We use a clean container to avoid LLVM conflicts on the GH runner images
-    container:
-      image: ubuntu:22.04
     steps:
-        - name: Install LLVM and build tools
-          run: |
-            export LLVM_VERSION=19
-            apt update
-            apt install --no-install-recommends -y \
-              lsb-release \
-              wget \
-              software-properties-common \
-              gnupg \
-              cmake \
-              ninja-build \
-              python-is-python3 \
-              python3-pip \
-              python3-setuptools \
-              python3-venv \
-              git
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            ./llvm.sh $LLVM_VERSION
-            apt install --no-install-recommends -y \
-              llvm-$LLVM_VERSION-dev
-            echo "LLVM_PREFIX=$(llvm-config-$LLVM_VERSION --prefix)" >> $GITHUB_ENV
-            echo "CC=clang-$LLVM_VERSION" >> $GITHUB_ENV
-            echo "CXX=clang++-$LLVM_VERSION" >> $GITHUB_ENV
-
         - name: Checkout
           uses: actions/checkout@v5
+          with:
+            submodules: recursive
 
-        - name: Add workspace as safe directory (necessary for docker)
-          run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
 
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang" \
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
         - name: Run example
@@ -62,28 +55,39 @@ jobs:
 
   macos:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: macos-latest
     steps:
-        - name: Install LLVM
-          run: |
-            brew install llvm@19
-            LLVM_PREFIX=$(brew --prefix llvm@19)
-            echo "LLVM_PREFIX=$LLVM_PREFIX" >> $GITHUB_ENV
-            echo "CC=clang" >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
-
         - name: Checkout
-          uses: actions/checkout@v5
+          uses: actions/checkout@v6
+          with:
+            submodules: recursive
+
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
 
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang" \
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
         - name: Run example
@@ -92,33 +96,46 @@ jobs:
 
   windows:
     # Skip building pull requests from the same repository
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: windows-latest
     steps:
-        - name: Visual Studio Developer Command Prompt
-          uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        - name: Setup MSVC
+          if: runner.os == 'Windows'
+          uses: TheMrMilchmann/setup-msvc-dev@79dac248aac9d0059f86eae9d8b5bfab4e95e97c # v4.0.0
+          with:
+            arch: x64
 
         - name: Checkout
-          uses: actions/checkout@v5
+          uses: actions/checkout@v6
+          with:
+            submodules: recursive
 
-        - name: Install LLVM
-          run: |
-            curl.exe -L -o llvm.7z https://github.com/LLVMParty/remill-template/releases/download/llvm-prebuild/llvm-19.1.6-install.7z
-            7z x llvm.7z -ollvm-install
-            echo "LLVM_PREFIX=$PWD/llvm-install" >> $env:GITHUB_ENV
-            echo "CC=clang.exe" >> $env:GITHUB_ENV
-            echo "CXX=clang++.exe" >> $env:GITHUB_ENV
-          shell: pwsh
+        - name: Hash dependencies
+          id: hash-dependencies
+          run: python dependencies/hash.py --debug >> "$GITHUB_OUTPUT"
+          shell: bash
+
+        - name: Cache dependencies
+          id: cache-dependencies
+          uses: actions/cache@v5
+          with:
+            path: dependencies/install
+            key: dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.file_hash }}
+            restore-keys: |
+              dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.hash-dependencies.outputs.restore_hash }}
 
         - name: Build dependencies
+          if: steps.cache-dependencies.outputs.cache-hit != 'true'
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$env:LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
           shell: pwsh
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang-cl.exe" `
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang-cl.exe"
             cmake --build build
           shell: pwsh
 

@@ -1,15 +1,34 @@
-# Get the remill include directories from the target
+# Get the remill include directory from the target. When remill is added with
+# add_subdirectory this property contains BUILD_INTERFACE generator expressions,
+# so resolve the first include directory that contains the runtime sysroot.
 if(NOT TARGET remill_settings)
     message(FATAL_ERROR "Could not find target 'remill_settings' (did remill update?)")
 endif()
-get_target_property(HELPER_REMILL_INCLUDE_DIR remill_settings INTERFACE_INCLUDE_DIRECTORIES)
-if(HELPER_REMILL_INCLUDE STREQUAL "HELPER_REMILL_INCLUDE_DIR-NOTFOUND")
+get_target_property(HELPER_REMILL_INCLUDE_DIRS remill_settings INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT HELPER_REMILL_INCLUDE_DIRS OR HELPER_REMILL_INCLUDE_DIRS STREQUAL "HELPER_REMILL_INCLUDE_DIRS-NOTFOUND")
     message(FATAL_ERROR "Could not determine remill include directory")
 endif()
-set(HELPER_REMILL_SYSROOT_DIR "${HELPER_REMILL_INCLUDE_DIR}/remill/Arch/Runtime/sysroot")
-if(NOT EXISTS "${HELPER_REMILL_SYSROOT_DIR}")
-    message(FATAL_ERROR "Could not find remill sysroot directory: ${HELPER_REMILL_SYSROOT_DIR}")
+
+set(HELPER_REMILL_INCLUDE_DIR "")
+foreach(include_dir IN LISTS HELPER_REMILL_INCLUDE_DIRS)
+    if(include_dir MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
+        set(candidate_include_dir "${CMAKE_MATCH_1}")
+    elseif(include_dir MATCHES "^\\$<INSTALL_INTERFACE:(.*)>$")
+        continue()
+    else()
+        set(candidate_include_dir "${include_dir}")
+    endif()
+
+    if(EXISTS "${candidate_include_dir}/remill/Arch/Runtime/sysroot")
+        set(HELPER_REMILL_INCLUDE_DIR "${candidate_include_dir}")
+        break()
+    endif()
+endforeach()
+
+if(NOT HELPER_REMILL_INCLUDE_DIR)
+    message(FATAL_ERROR "Could not find remill sysroot from include directories: ${HELPER_REMILL_INCLUDE_DIRS}")
 endif()
+set(HELPER_REMILL_SYSROOT_DIR "${HELPER_REMILL_INCLUDE_DIR}/remill/Arch/Runtime/sysroot")
 
 # Locate the clang executable
 set(HELPER_CLANG_EXECUTABLE ${LLVM_TOOLS_BINARY_DIR}/clang++${CMAKE_EXECUTABLE_SUFFIX})
@@ -41,7 +60,6 @@ function(add_helper arch)
         -emit-llvm
         -std=c++17
         -O3
-        -Werror
         -Wno-gnu-inline-cpp-without-extern
         -Wno-return-type-c-linkage
 

@@ -23,6 +23,13 @@ if(LLVM-Wrapper_FIND_REQUIRED)
     list(APPEND FIND_ARGS "REQUIRED")
 endif()
 
+# Workaround: prebuilt LLVM 21 on Windows references LibXml2::LibXml2
+# in LLVMWindowsManifest, but LibXml2 may not be installed. Create a
+# dummy imported target so cmake doesn't error during configuration.
+if(WIN32 AND NOT TARGET LibXml2::LibXml2)
+    add_library(LibXml2::LibXml2 INTERFACE IMPORTED)
+endif()
+
 # Find LLVM
 find_package(LLVM ${FIND_ARGS})
 unset(FIND_ARGS)
@@ -34,6 +41,19 @@ endif()
 
 # Split the definitions properly (https://weliveindetail.github.io/blog/post/2017/07/17/notes-setup.html)
 separate_arguments(LLVM_DEFINITIONS)
+
+# Support dynamically-linked LLVM.dll in LLVMParty's Windows prebuilts. Some
+# LLVM installs expose LLVM.dll without defining an imported LLVM target, but
+# CMake needs an imported SHARED target for $<TARGET_RUNTIME_DLLS:...> to copy
+# the DLL next to executables.
+if(WIN32 AND EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll" AND NOT TARGET LLVM)
+    find_library(LLVM_LIB LLVM PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH NO_CACHE REQUIRED)
+    add_library(LLVM SHARED IMPORTED)
+    set_target_properties(LLVM PROPERTIES
+        IMPORTED_IMPLIB "${LLVM_LIB}"
+        IMPORTED_LOCATION "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
+    )
+endif()
 
 # https://github.com/JonathanSalwan/Triton/issues/1082#issuecomment-1030826696
 if(LLVM_LINK_LLVM_DYLIB)
