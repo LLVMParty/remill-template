@@ -17,7 +17,7 @@ This will create a [CMake prefix](https://cmake.org/cmake/help/latest/command/fi
 ## Docker
 
 ```sh
-export TAG="ghcr.io/llvmparty/remill-template/dependencies:22.04-llvm21.1.6"
+export TAG="ghcr.io/llvmparty/remill-template/dependencies:22.04-llvm21.1.1"
 docker buildx build --platform linux/arm64 -t "$TAG" .
 docker buildx build --platform linux/amd64 -t "$TAG" .
 docker buildx build --platform linux/arm64,linux/amd64 -t "$TAG" .

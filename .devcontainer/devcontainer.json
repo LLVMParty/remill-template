@@ -1,6 +1,6 @@
 {
     "name": "remill-template",
-    "image": "ghcr.io/llvmparty/remill-template/dependencies:22.04-llvm19.1.7-remill6.0.0",
+    "image": "ghcr.io/llvmparty/remill-template/dependencies:22.04-llvm21.1.1",
     "customizations": {
         "vscode": {
             "extensions": [
