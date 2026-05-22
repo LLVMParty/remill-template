@@ -15,45 +15,38 @@ jobs:
     container:
       image: ubuntu:22.04
     steps:
-        - name: Install LLVM and build tools
+        - name: Install build tools
           run: |
-            export LLVM_VERSION=19
             apt update
             apt install --no-install-recommends -y \
-              lsb-release \
-              wget \
-              software-properties-common \
-              gnupg \
+              ca-certificates \
               cmake \
               ninja-build \
               python-is-python3 \
               python3-pip \
               python3-setuptools \
               python3-venv \
-              git
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            ./llvm.sh $LLVM_VERSION
-            apt install --no-install-recommends -y \
-              llvm-$LLVM_VERSION-dev
-            echo "LLVM_PREFIX=$(llvm-config-$LLVM_VERSION --prefix)" >> $GITHUB_ENV
-            echo "CC=clang-$LLVM_VERSION" >> $GITHUB_ENV
-            echo "CXX=clang++-$LLVM_VERSION" >> $GITHUB_ENV
+              git \
+              build-essential
 
         - name: Checkout
           uses: actions/checkout@v5
+          with:
+            submodules: recursive
 
         - name: Add workspace as safe directory (necessary for docker)
           run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang" \
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
         - name: Run example
@@ -65,25 +58,25 @@ jobs:
     if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: macos-latest
     steps:
-        - name: Install LLVM
+        - name: Install build tools
           run: |
-            brew install llvm@19
-            LLVM_PREFIX=$(brew --prefix llvm@19)
-            echo "LLVM_PREFIX=$LLVM_PREFIX" >> $GITHUB_ENV
-            echo "CC=clang" >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
+            brew install ninja
 
         - name: Checkout
           uses: actions/checkout@v5
+          with:
+            submodules: recursive
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang" \
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
         - name: Run example
@@ -100,25 +93,20 @@ jobs:
 
         - name: Checkout
           uses: actions/checkout@v5
-
-        - name: Install LLVM
-          run: |
-            curl.exe -L -o llvm.7z https://github.com/LLVMParty/remill-template/releases/download/llvm-prebuild/llvm-19.1.6-install.7z
-            7z x llvm.7z -ollvm-install
-            echo "LLVM_PREFIX=$PWD/llvm-install" >> $env:GITHUB_ENV
-            echo "CC=clang.exe" >> $env:GITHUB_ENV
-            echo "CXX=clang++.exe" >> $env:GITHUB_ENV
-          shell: pwsh
+          with:
+            submodules: recursive
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$env:LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+            cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_BUILD_TYPE=Release
             cmake --build dependencies/build
           shell: pwsh
 
         - name: Build project
           run: |
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+              "-DCMAKE_C_COMPILER=$PWD/dependencies/install/bin/clang-cl.exe" `
+              "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang-cl.exe"
             cmake --build build
           shell: pwsh
 

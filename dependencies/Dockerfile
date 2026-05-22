@@ -5,14 +5,15 @@ WORKDIR /tmp
 COPY \
     CMakeLists.txt  \
     superbuild.cmake \
-    xed.cmake \
+    llvm-prebuilt.cmake \
     XEDConfig.cmake.in \
     ./
+COPY remill/dependencies ./remill/dependencies
 
 # Build dependencies
 RUN \
 mkdir /dependencies && \
-cmake -B build "-DCMAKE_INSTALL_PREFIX=/dependencies" -DUSE_EXTERNAL_LLVM=ON && \
+cmake -B build "-DCMAKE_INSTALL_PREFIX=/dependencies" && \
 cmake --build build && \
 rm -rf build
 

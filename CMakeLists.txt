@@ -27,13 +27,26 @@ endif()
 # Variables
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(GFLAGS_USE_TARGET_NAMESPACE ON)
+set(REMILL_ENABLE_TESTING OFF)
+set(REMILL_FETCH_SLEIGH OFF)
+set(REMILL_ENABLE_INSTALL_TARGET OFF)
+
+include("cmake/SetupDependenciesPrefix.cmake")
 
 project(remill-template)
 
 # Packages
 find_package(LLVM-Wrapper REQUIRED)
 
-find_package(remill REQUIRED)
+# Subdirectory: dependencies/remill
+set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
+if(CMAKE_FOLDER)
+	set(CMAKE_FOLDER "${CMAKE_FOLDER}/dependencies/remill")
+else()
+	set(CMAKE_FOLDER "dependencies/remill")
+endif()
+add_subdirectory("dependencies/remill")
+set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
 # Subdirectory: helpers
 set(CMKR_CMAKE_FOLDER ${CMAKE_FOLDER})
@@ -72,4 +85,30 @@ target_link_libraries(remill-example PRIVATE
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT remill-example)
+endif()
+
+set(CMKR_TARGET remill-example)
+if(WIN32)
+    # Make the executable runnable from the build tree when using DLL-based
+    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
+    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
+    # packages that expose the DLL without modelling it on every component.
+    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
+        add_custom_command(
+            TARGET remill-example
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
+                $<TARGET_FILE_DIR:remill-example>
+        )
+    endif()
+
+    add_custom_command(
+        TARGET remill-example
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:remill-example>
+            $<TARGET_FILE_DIR:remill-example>
+        COMMAND_EXPAND_LISTS
+    )
 endif()

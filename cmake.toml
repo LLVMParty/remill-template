@@ -1,17 +1,47 @@
 # Reference: https://build-cpp.github.io/cmkr/cmake-toml
 [project]
 name = "remill-template"
+include-before = ["cmake/SetupDependenciesPrefix.cmake"]
 
 [variables]
 CMAKE_MODULE_PATH = "${CMAKE_SOURCE_DIR}/cmake"
 GFLAGS_USE_TARGET_NAMESPACE = true
-
-[subdir.helpers]
+REMILL_ENABLE_TESTING = false
+REMILL_FETCH_SLEIGH = false
+REMILL_ENABLE_INSTALL_TARGET = false
 
 [find-package.LLVM-Wrapper]
-[find-package.remill]
+
+[subdir."dependencies/remill"]
+[subdir.helpers]
 
 [target.remill-example]
 type = "executable"
 sources = ["src/example.cpp"]
 link-libraries = ["::LLVM-Wrapper", "::remill"]
+cmake-after = """
+if(WIN32)
+    # Make the executable runnable from the build tree when using DLL-based
+    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
+    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
+    # packages that expose the DLL without modelling it on every component.
+    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
+        add_custom_command(
+            TARGET remill-example
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
+                $<TARGET_FILE_DIR:remill-example>
+        )
+    endif()
+
+    add_custom_command(
+        TARGET remill-example
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:remill-example>
+            $<TARGET_FILE_DIR:remill-example>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
+"""
